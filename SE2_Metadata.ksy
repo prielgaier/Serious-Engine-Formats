@@ -11,7 +11,21 @@ types:
   file_header:
     seq:
       - id: magic
-        contents: "CTSEMETA"
+        type: str
+        size: 4
+        encoding: ASCII
+      - id: body
+        type:
+          switch-on: magic
+          cases:
+            '"CTSE"': ctsemeta_header
+            '"TVER"': tver_header
+            _: unknown_header
+  
+  ctsemeta_header:
+    seq:
+      - id: meta_suffix
+        contents: "META"
       - id: endianess
         type: u4
       - id: meta_version
@@ -22,6 +36,18 @@ types:
         type: data_chunk
         repeat: expr
         repeat-expr: 8
+        
+  tver_header:
+    seq:
+      - id: version_data
+        type: u4
+      - id: additional_data
+        size-eos: true
+        
+  unknown_header:
+    seq:
+      - id: remaining_data
+        size-eos: true
   
   data_chunk:
     seq:

@@ -51,6 +51,15 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({ modelData, animati
             showWireframe={showWireframe}
           />
           
+          {/* Animation Controller - moved inside Canvas */}
+          <AnimationController
+            isPlaying={isPlaying}
+            currentFrame={currentFrame}
+            totalFrames={totalFrames}
+            speed={animationSpeed}
+            onFrameChange={setCurrentFrame}
+          />
+          
           {/* Stats */}
           {showStats && <Stats />}
         </Suspense>
@@ -142,15 +151,6 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({ modelData, animati
           </div>
         </div>
       )}
-
-      {/* Animation Loop */}
-      <AnimationController
-        isPlaying={isPlaying}
-        currentFrame={currentFrame}
-        totalFrames={totalFrames}
-        speed={animationSpeed}
-        onFrameChange={setCurrentFrame}
-      />
     </div>
   );
 };
