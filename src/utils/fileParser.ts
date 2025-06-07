@@ -1,4 +1,5 @@
 import { ParsedFile } from '../types/ParsedFile';
+import { getParserForExtension } from '../parsers';
 
 export async function parseFile(file: File): Promise<ParsedFile> {
   const startTime = performance.now();
@@ -7,9 +8,27 @@ export async function parseFile(file: File): Promise<ParsedFile> {
     const arrayBuffer = await file.arrayBuffer();
     const extension = file.name.split('.').pop()?.toLowerCase() || '';
     
-    // For now, we'll create a basic structure showing the raw data
-    // In a real implementation, you would use the Kaitai Struct parsers
-    const data = await parseFileData(arrayBuffer, extension);
+    // Get the appropriate parser for this file type
+    const ParserClass = getParserForExtension(extension);
+    
+    let data: any;
+    let error: string | undefined;
+    
+    if (ParserClass) {
+      try {
+        // Use the Kaitai Struct parser
+        const parsedData = ParserClass.fromBytes(arrayBuffer);
+        data = convertToSerializable(parsedData);
+      } catch (parseError) {
+        console.error(`Kaitai parsing failed for ${file.name}:`, parseError);
+        error = parseError instanceof Error ? parseError.message : 'Parsing failed';
+        // Fallback to basic analysis
+        data = await parseFileDataBasic(arrayBuffer, extension);
+      }
+    } else {
+      // No specific parser available, use basic analysis
+      data = await parseFileDataBasic(arrayBuffer, extension);
+    }
     
     const endTime = performance.now();
     
@@ -20,7 +39,8 @@ export async function parseFile(file: File): Promise<ParsedFile> {
       size: file.size,
       data,
       rawData: arrayBuffer,
-      parseTime: Math.round(endTime - startTime)
+      parseTime: Math.round(endTime - startTime),
+      error
     };
   } catch (error) {
     const endTime = performance.now();
@@ -28,7 +48,44 @@ export async function parseFile(file: File): Promise<ParsedFile> {
   }
 }
 
-async function parseFileData(buffer: ArrayBuffer, extension: string): Promise<any> {
+function convertToSerializable(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (obj instanceof ArrayBuffer || obj instanceof Uint8Array) {
+    return {
+      _type: 'binary',
+      _size: obj.byteLength || obj.length,
+      _preview: Array.from(new Uint8Array(obj).slice(0, 32))
+    };
+  }
+  
+  if (typeof obj === 'object') {
+    if (Array.isArray(obj)) {
+      return obj.map(item => convertToSerializable(item));
+    }
+    
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip private properties and functions
+      if (key.startsWith('_') || typeof value === 'function') {
+        continue;
+      }
+      
+      try {
+        result[key] = convertToSerializable(value);
+      } catch (error) {
+        result[key] = `[Error: ${error instanceof Error ? error.message : 'Unknown'}]`;
+      }
+    }
+    return result;
+  }
+  
+  return obj;
+}
+
+async function parseFileDataBasic(buffer: ArrayBuffer, extension: string): Promise<any> {
   const view = new DataView(buffer);
   const uint8Array = new Uint8Array(buffer);
   
@@ -36,7 +93,8 @@ async function parseFileData(buffer: ArrayBuffer, extension: string): Promise<an
   const result: any = {
     fileInfo: {
       size: buffer.byteLength,
-      extension: extension.toUpperCase()
+      extension: extension.toUpperCase(),
+      parseMethod: 'basic'
     },
     header: {},
     rawData: {
@@ -91,23 +149,41 @@ async function parseFileData(buffer: ArrayBuffer, extension: string): Promise<an
           
         case 'FTTF':
           result.fileType = 'Font';
-          // Font parsing would go here
+          if (buffer.byteLength >= 16) {
+            // Skip DFNM section for now
+            result.header.charWidth = view.getUint32(12, true);
+            result.header.charHeight = view.getUint32(16, true);
+          }
           break;
           
         case 'MDAT':
           result.fileType = 'Model';
-          // Model parsing would go here
+          if (buffer.byteLength >= 8) {
+            const versionBytes = uint8Array.slice(4, 8);
+            result.header.version = new TextDecoder().decode(versionBytes);
+          }
+          break;
+          
+        case 'BUIV':
+          result.fileType = 'World (with build version)';
+          if (buffer.byteLength >= 8) {
+            result.header.buildNumber = view.getUint32(4, true);
+          }
           break;
           
         case 'WRLD':
           result.fileType = 'World';
-          // World parsing would go here
           break;
           
         default:
           // Check for other patterns
-          if (magic.startsWith('CTS')) {
+          const magic8 = new TextDecoder().decode(uint8Array.slice(0, 8));
+          if (magic8 === 'CTSEMETA') {
             result.fileType = 'SE2 Metadata';
+            if (buffer.byteLength >= 16) {
+              result.header.endianess = view.getUint32(8, true);
+              result.header.metaVersion = view.getUint32(12, true);
+            }
           } else {
             result.fileType = 'Unknown';
           }
