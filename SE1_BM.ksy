@@ -181,7 +181,7 @@ types:
     seq:
       - id: len
         type: u4
-      - id: type
+      - id: data
         type: str
         size: len
         encoding: ASCII
