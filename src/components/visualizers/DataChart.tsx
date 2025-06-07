@@ -13,7 +13,7 @@ import {
   PieChart,
   Pie,
   Cell,
-  ScatterPlot,
+  ScatterChart,
   Scatter
 } from 'recharts';
 import { TrendingUp, PieChart as PieChartIcon, BarChart3, Activity } from 'lucide-react';
@@ -139,13 +139,13 @@ export const DataChart: React.FC<DataChartProps> = ({ data, fileType }) => {
               {chartData.scatterData.title}
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <ScatterPlot data={chartData.scatterData.data}>
+              <ScatterChart data={chartData.scatterData.data}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="x" />
                 <YAxis dataKey="y" />
                 <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                 <Scatter fill="#4f46e5" />
-              </ScatterPlot>
+              </ScatterChart>
             </ResponsiveContainer>
           </div>
         )}
