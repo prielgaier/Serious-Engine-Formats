@@ -187,51 +187,71 @@ const ModelMesh: React.FC<{
       let normals: number[] = [];
       let uvs: number[] = [];
 
-      if (modelData.vertices?.data) {
-        // Handle AFVX/AV17 format (frame-based vertices)
-        const frameVertices = modelData.vertices.data;
-        const vtxCount = modelData.header?.vtxCount?.value || 0;
-        const frameOffset = currentFrame * vtxCount;
-        
-        for (let i = 0; i < vtxCount; i++) {
-          const vtx = frameVertices[frameOffset + i];
-          if (vtx) {
+      // Get the first LOD for mesh data
+      const lod = modelData.lods?.[0];
+      if (!lod) {
+        console.warn('No LOD data found in model');
+        return;
+      }
+
+      // Extract vertices
+      if (lod.vertices) {
+        lod.vertices.forEach((vtx: any) => {
+          if (vtx.x !== undefined && vtx.y !== undefined && vtx.z !== undefined) {
+            vertices.push(vtx.x, vtx.y, vtx.z);
+          } else {
+            // Handle old format vertices
             vertices.push(vtx.x || 0, vtx.y || 0, vtx.z || 0);
           }
-        }
-      } else if (modelData.mainMipVertices?.vertices) {
-        // Handle main mip vertices
-        modelData.mainMipVertices.vertices.forEach((vtx: any) => {
-          vertices.push(vtx.x || 0, vtx.y || 0, vtx.z || 0);
-        });
-      } else if (modelData.lods?.[0]?.vertices) {
-        // Handle LOD vertices
-        modelData.lods[0].vertices.forEach((vtx: any) => {
-          vertices.push(vtx.x || 0, vtx.y || 0, vtx.z || 0);
         });
       }
 
       // Extract normals
-      if (modelData.lods?.[0]?.normals) {
-        modelData.lods[0].normals.forEach((normal: any) => {
-          normals.push(normal.x || 0, normal.y || 0, normal.z || 0);
+      if (lod.normals) {
+        lod.normals.forEach((normal: any) => {
+          if (normal.nx !== undefined && normal.ny !== undefined && normal.nz !== undefined) {
+            normals.push(normal.nx, normal.ny, normal.nz);
+          } else if (normal.x !== undefined && normal.y !== undefined && normal.z !== undefined) {
+            normals.push(normal.x, normal.y, normal.z);
+          } else {
+            normals.push(0, 1, 0); // Default normal
+          }
         });
       }
 
-      // Extract UV coordinates
-      if (modelData.lods?.[0]?.uvMaps?.[0]?.uvCoords) {
-        modelData.lods[0].uvMaps[0].uvCoords.forEach((uv: any) => {
+      // Extract UV coordinates from first UV map
+      if (lod.uvMaps?.[0]?.uvCoords) {
+        lod.uvMaps[0].uvCoords.forEach((uv: any) => {
           uvs.push(uv.u || 0, uv.v || 0);
         });
       }
 
-      // Extract indices from surfaces
-      if (modelData.lods?.[0]?.surfaces) {
-        modelData.lods[0].surfaces.forEach((surface: any) => {
+      // Extract indices from surfaces with proper validation
+      if (lod.surfaces) {
+        lod.surfaces.forEach((surface: any) => {
           if (surface.triangles) {
             surface.triangles.forEach((tri: any) => {
-              if (tri.vertices) {
-                indices.push(...tri.vertices);
+              if (tri.vertices && tri.vertices.length === 3) {
+                // Validate vertex indices
+                const v0 = tri.vertices[0];
+                const v1 = tri.vertices[1];
+                const v2 = tri.vertices[2];
+                
+                // Check if indices are within valid range
+                const maxIndex = Math.floor(vertices.length / 3) - 1;
+                if (v0 <= maxIndex && v1 <= maxIndex && v2 <= maxIndex && 
+                    v0 >= 0 && v1 >= 0 && v2 >= 0) {
+                  
+                  // Handle surface-relative vertices
+                  const firstVtx = surface.firstVtx || 0;
+                  if (lod.flags?.isSurfaceRelativeVertices) {
+                    indices.push(firstVtx + v0, firstVtx + v1, firstVtx + v2);
+                  } else {
+                    indices.push(v0, v1, v2);
+                  }
+                } else {
+                  console.warn(`Invalid triangle indices: ${v0}, ${v1}, ${v2} (max: ${maxIndex})`);
+                }
               }
             });
           }
@@ -241,20 +261,30 @@ const ModelMesh: React.FC<{
       // Set geometry attributes
       if (vertices.length > 0) {
         geom.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        console.log(`Loaded ${vertices.length / 3} vertices`);
       }
       
-      if (normals.length > 0) {
+      if (normals.length > 0 && normals.length === vertices.length) {
         geom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
       } else {
         geom.computeVertexNormals();
       }
       
-      if (uvs.length > 0) {
+      if (uvs.length > 0 && uvs.length === (vertices.length / 3) * 2) {
         geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       }
       
       if (indices.length > 0) {
-        geom.setIndex(indices);
+        // Validate all indices before setting
+        const maxVertexIndex = Math.floor(vertices.length / 3) - 1;
+        const validIndices = indices.filter(index => index >= 0 && index <= maxVertexIndex);
+        
+        if (validIndices.length === indices.length && validIndices.length % 3 === 0) {
+          geom.setIndex(validIndices);
+          console.log(`Loaded ${validIndices.length / 3} triangles`);
+        } else {
+          console.warn(`Invalid indices detected. Expected ${indices.length}, got ${validIndices.length} valid indices`);
+        }
       }
 
       geom.computeBoundingSphere();
