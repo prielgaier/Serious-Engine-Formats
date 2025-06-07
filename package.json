@@ -4,15 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "npm run compile-ksy && vite",
+    "build": "npm run compile-ksy && vite build",
     "preview": "vite preview",
     "compile-ksy": "node scripts/compile-ksy.js"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "kaitai-struct": "^0.10.0",
     "lucide-react": "^0.263.1"
   },
   "devDependencies": {
@@ -24,6 +23,6 @@
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.3",
     "vite": "^5.3.4",
-    "kaitai-struct-compiler": "^0.10.0"
+    "js-yaml": "^4.1.0"
   }
 }
