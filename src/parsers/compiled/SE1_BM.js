@@ -129,15 +129,44 @@ class LodChunkOld {
     this.flags = new LodFlags(this._io, this, this._root);
     this.vtxCount = this._io.readU4le();
     
-    // Read vertices, normals, etc. (simplified for brevity)
+    // Vertices
     this.vertices = [];
     for (let i = 0; i < this.vtxCount; i++) {
-      this.vertices.push({
-        x: this._io.readF4le(),
-        y: this._io.readF4le(),
-        z: this._io.readF4le(),
-        dummy: this._io.readU4le()
-      });
+      this.vertices.push(new MeshVertexOld(this._io, this, this._root));
+    }
+    
+    // Normals
+    this.normals = [];
+    for (let i = 0; i < this.vtxCount; i++) {
+      this.normals.push(new MeshNormal(this._io, this, this._root));
+    }
+    
+    // UV Maps
+    this.uvCount = this._io.readU4le();
+    this.uvMaps = [];
+    for (let i = 0; i < this.uvCount; i++) {
+      this.uvMaps.push(new MeshUVOld(this._io, this, this._root));
+    }
+    
+    // Surfaces
+    this.surfaceCount = this._io.readU4le();
+    this.surfaces = [];
+    for (let i = 0; i < this.surfaceCount; i++) {
+      this.surfaces.push(new MeshSurfaceOld(this._io, this, this._root));
+    }
+    
+    // Weight Maps
+    this.weightCount = this._io.readU4le();
+    this.weightMaps = [];
+    for (let i = 0; i < this.weightCount; i++) {
+      this.weightMaps.push(new MeshWeightMap(this._io, this, this._root));
+    }
+    
+    // Morph Maps
+    this.morphCount = this._io.readU4le();
+    this.morphMaps = [];
+    for (let i = 0; i < this.morphCount; i++) {
+      this.morphMaps.push(new MeshMorphMapOld(this._io, this, this._root));
     }
   }
 }
@@ -190,6 +219,55 @@ class Float3D {
   }
 }
 
+class MeshVertexOld {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.x = this._io.readF4le();
+    this.y = this._io.readF4le();
+    this.z = this._io.readF4le();
+    this.dummy = this._io.readU4le();
+  }
+}
+
+class MeshNormal {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.nx = this._io.readF4le();
+    this.ny = this._io.readF4le();
+    this.nz = this._io.readF4le();
+    this.dummy = this._io.readU4le();
+  }
+}
+
+class MeshUVOld {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.id = new CTString(this._io, this, this._root);
+    this.uvCoords = [];
+    for (let i = 0; i < this._parent.vtxCount; i++) {
+      this.uvCoords.push(new MeshUVCoord(this._io, this, this._root));
+    }
+  }
+}
+
 class MeshUV {
   constructor(io, parent, root) {
     this._io = io;
@@ -202,10 +280,47 @@ class MeshUV {
     this.id = new CTString(this._io, this, this._root);
     this.uvCoords = [];
     for (let i = 0; i < this._parent.vtxCount; i++) {
-      this.uvCoords.push({
-        u: this._io.readF4le(),
-        v: this._io.readF4le()
-      });
+      this.uvCoords.push(new MeshUVCoord(this._io, this, this._root));
+    }
+  }
+}
+
+class MeshUVCoord {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.u = this._io.readF4le();
+    this.v = this._io.readF4le();
+  }
+}
+
+class MeshSurfaceOld {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.id = new CTString(this._io, this, this._root);
+    this.firstVtx = this._io.readS4le();
+    this.vtxCount = this._io.readU4le();
+    this.triCount = this._io.readU4le();
+    
+    this.triangles = [];
+    for (let i = 0; i < this.triCount; i++) {
+      this.triangles.push(new MeshTriangleOld(this._io, this, this._root));
+    }
+    
+    this.shaderExists = this._io.readU4le();
+    if (this.shaderExists > 0) {
+      this.shaderParams = new MeshShaderParams(this._io, this, this._root);
     }
   }
 }
@@ -227,13 +342,7 @@ class MeshSurface {
     
     this.triangles = [];
     for (let i = 0; i < this.triCount; i++) {
-      this.triangles.push({
-        vertices: [
-          this._io.readU2le(),
-          this._io.readU2le(),
-          this._io.readU2le()
-        ]
-      });
+      this.triangles.push(new MeshTriangle(this._io, this, this._root));
     }
     
     this.relativeWmiCount = this._io.readU4le();
@@ -245,6 +354,38 @@ class MeshSurface {
     this.shaderExists = this._io.readU4le();
     if (this.shaderExists > 0) {
       this.shaderParams = new MeshShaderParams(this._io, this, this._root);
+    }
+  }
+}
+
+class MeshTriangleOld {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.vertices = [];
+    for (let i = 0; i < 3; i++) {
+      this.vertices.push(this._io.readU4le());
+    }
+  }
+}
+
+class MeshTriangle {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.vertices = [];
+    for (let i = 0; i < 3; i++) {
+      this.vertices.push(this._io.readU2le());
     }
   }
 }
@@ -283,6 +424,10 @@ class MeshShaderParams {
     for (let i = 0; i < this.floatCount; i++) {
       this.floatParams.push(this._io.readF4le());
     }
+    
+    if (this._root.header.version > 11) {
+      this.shaderFlags = this._io.readU4le();
+    }
   }
 }
 
@@ -299,11 +444,57 @@ class MeshWeightMap {
     this.vtxCount = this._io.readU4le();
     this.vertices = [];
     for (let i = 0; i < this.vtxCount; i++) {
-      this.vertices.push({
-        vtx: this._io.readU4le(),
-        weight: this._io.readF4le()
-      });
+      this.vertices.push(new MeshVertexWeight(this._io, this, this._root));
     }
+  }
+}
+
+class MeshVertexWeight {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.vtx = this._io.readU4le();
+    this.weight = this._io.readF4le();
+  }
+}
+
+class MeshMorphMapOld {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.id = new CTString(this._io, this, this._root);
+    this.isRelative = this._io.readU4le();
+    this.setCount = this._io.readU4le();
+    this.sets = [];
+    for (let i = 0; i < this.setCount; i++) {
+      this.sets.push(new MeshVertexMorphOld(this._io, this, this._root));
+    }
+  }
+}
+
+class MeshVertexMorphOld {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.vtx = this._io.readU4le();
+    this.pos = new Float3D(this._io, this, this._root);
+    this.normal = new Float3D(this._io, this, this._root);
+    this.dummy = this._io.readU4le();
   }
 }
 
@@ -321,12 +512,23 @@ class MeshMorphMap {
     this.setCount = this._io.readU4le();
     this.sets = [];
     for (let i = 0; i < this.setCount; i++) {
-      this.sets.push({
-        vtx: this._io.readU4le(),
-        pos: new Float3D(this._io, this, this._root),
-        normal: new Float3D(this._io, this, this._root)
-      });
+      this.sets.push(new MeshVertexMorph(this._io, this, this._root));
     }
+  }
+}
+
+class MeshVertexMorph {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.vtx = this._io.readU4le();
+    this.pos = new Float3D(this._io, this, this._root);
+    this.normal = new Float3D(this._io, this, this._root);
   }
 }
 
