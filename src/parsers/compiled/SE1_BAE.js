@@ -1,4 +1,4 @@
-import KaitaiStream from 'kaitai-struct/KaitaiStream.js';
+import KaitaiStream from '/public/kaitai-struct/KaitaiStream.js';
 
 export class SE1_BAE {
   constructor(io, parent, root) {

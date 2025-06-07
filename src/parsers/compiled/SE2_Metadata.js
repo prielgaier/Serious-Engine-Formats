@@ -1,4 +1,4 @@
-import KaitaiStream from 'kaitai-struct/KaitaiStream.js';
+import KaitaiStream from '/public/kaitai-struct/KaitaiStream.js';
 
 export class SE2_Metadata {
   constructor(io, parent, root) {
