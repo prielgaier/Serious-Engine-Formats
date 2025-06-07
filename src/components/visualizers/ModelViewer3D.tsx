@@ -2,7 +2,7 @@ import React, { Suspense, useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Stats, Environment, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
-import { Play, Pause, RotateCcw, ZoomIn, ZoomOut, Grid3X3, Eye, EyeOff } from 'lucide-react';
+import { Play, Pause, RotateCcw, ZoomIn, ZoomOut, Grid as Grid3X3, Eye, EyeOff } from 'lucide-react';
 
 interface ModelViewer3DProps {
   modelData: any;

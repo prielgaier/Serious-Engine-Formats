@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ParsedFile, FILE_TYPES } from '../types/ParsedFile';
-import { FileText, AlertCircle, Clock, HardDrive, Eye, BarChart3, Cube, Mountain, Play, Binary } from 'lucide-react';
+import { FileText, AlertCircle, Clock, HardDrive, Eye, BarChart3, Youtube as Cube, Mountain, Play, Binary } from 'lucide-react';
 import { DataViewer } from './DataViewer';
 import { ModelViewer3D } from './visualizers/ModelViewer3D';
 import { TerrainViewer } from './visualizers/TerrainViewer';
