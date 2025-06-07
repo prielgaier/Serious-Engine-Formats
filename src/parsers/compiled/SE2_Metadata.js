@@ -31,18 +31,84 @@ class FileHeader {
   }
 
   _read() {
-    this.magic = this._io.readBytes(8);
+    // Read first 4 bytes to determine format
+    this.magic = this._io.readBytes(4);
     const magicStr = new TextDecoder().decode(this.magic);
-    if (magicStr !== 'CTSEMETA') {
-      throw new Error(`Invalid magic bytes: expected 'CTSEMETA', got '${magicStr}'`);
+    
+    if (magicStr === 'CTSE') {
+      // CTSE format - read remaining META part
+      const metaSuffix = this._io.readBytes(4);
+      const metaStr = new TextDecoder().decode(metaSuffix);
+      if (metaStr !== 'META') {
+        throw new Error(`Invalid CTSE format: expected 'META', got '${metaStr}'`);
+      }
+      this.body = new CTSEMetaHeader(this._io, this, this._root);
+    } else if (magicStr === 'TVER') {
+      // TVER format
+      this.body = new TVERHeader(this._io, this, this._root);
+    } else {
+      // Try to handle as unknown format
+      this.body = new UnknownHeader(this._io, this, this._root);
     }
+  }
+}
+
+class CTSEMetaHeader {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
     this.endianess = this._io.readU4le();
     this.metaVersion = this._io.readU4le();
     this.versionString = new CString(this._io, this, this._root);
     
     this.chunks = [];
     for (let i = 0; i < 8; i++) {
-      this.chunks.push(new DataChunk(this._io, this, this._root));
+      try {
+        this.chunks.push(new DataChunk(this._io, this, this._root));
+      } catch (error) {
+        console.warn(`Error reading chunk ${i}:`, error);
+        break;
+      }
+    }
+  }
+}
+
+class TVERHeader {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    this.versionData = this._io.readU4le();
+    // Read remaining data
+    const remaining = this._io.size - this._io.pos;
+    if (remaining > 0) {
+      this.additionalData = this._io.readBytes(remaining);
+    }
+  }
+}
+
+class UnknownHeader {
+  constructor(io, parent, root) {
+    this._io = io;
+    this._parent = parent;
+    this._root = root;
+    this._read();
+  }
+
+  _read() {
+    // Read remaining data
+    const remaining = this._io.size - this._io.pos;
+    if (remaining > 0) {
+      this.remainingData = this._io.readBytes(remaining);
     }
   }
 }
@@ -56,6 +122,8 @@ class DataChunk {
   }
 
   _read() {
+    if (this._io.isEof()) return;
+    
     this.type = this._io.readBytes(4);
     this.typeStr = new TextDecoder().decode(this.type);
     

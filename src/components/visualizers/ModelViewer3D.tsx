@@ -16,54 +16,66 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({ modelData, animati
   const [showGrid, setShowGrid] = useState(true);
   const [showStats, setShowStats] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
 
   const totalFrames = animationData?.frameCount?.value || modelData?.header?.frameCount?.value || 1;
 
+  useEffect(() => {
+    // Simulate loading time
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="w-full h-[600px] bg-secondary-900 rounded-xl overflow-hidden relative">
-      {/* 3D Canvas wrapped with Suspense */}
-      <Suspense fallback={<LoadingSpinner />}>
-        <Canvas shadows>
-          <PerspectiveCamera makeDefault position={[5, 5, 5]} />
-          <OrbitControls enablePan enableZoom enableRotate />
-          
-          {/* Lighting */}
-          <ambientLight intensity={0.4} />
-          <directionalLight
-            position={[10, 10, 5]}
-            intensity={1}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-          />
-          <pointLight position={[-10, -10, -5]} intensity={0.5} />
-          
-          {/* Environment */}
-          <Environment preset="studio" />
-          
-          {/* Grid */}
-          {showGrid && <Grid infiniteGrid fadeDistance={50} fadeStrength={5} />}
-          
-          {/* Model */}
-          <ModelMesh 
-            modelData={modelData}
-            currentFrame={currentFrame}
-            showWireframe={showWireframe}
-          />
-          
-          {/* Animation Controller - moved inside Canvas */}
-          <AnimationController
-            isPlaying={isPlaying}
-            currentFrame={currentFrame}
-            totalFrames={totalFrames}
-            speed={animationSpeed}
-            onFrameChange={setCurrentFrame}
-          />
-          
-          {/* Stats */}
-          {showStats && <Stats />}
-        </Canvas>
-      </Suspense>
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-secondary-900 z-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        </div>
+      )}
+
+      {/* 3D Canvas */}
+      <Canvas shadows>
+        <PerspectiveCamera makeDefault position={[5, 5, 5]} />
+        <OrbitControls enablePan enableZoom enableRotate />
+        
+        {/* Lighting */}
+        <ambientLight intensity={0.4} />
+        <directionalLight
+          position={[10, 10, 5]}
+          intensity={1}
+          castShadow
+          shadow-mapSize-width={2048}
+          shadow-mapSize-height={2048}
+        />
+        <pointLight position={[-10, -10, -5]} intensity={0.5} />
+        
+        {/* Environment */}
+        <Environment preset="studio" />
+        
+        {/* Grid */}
+        {showGrid && <Grid infiniteGrid fadeDistance={50} fadeStrength={5} />}
+        
+        {/* Model */}
+        <ModelMesh 
+          modelData={modelData}
+          currentFrame={currentFrame}
+          showWireframe={showWireframe}
+        />
+        
+        {/* Animation Controller - moved inside Canvas */}
+        <AnimationController
+          isPlaying={isPlaying}
+          currentFrame={currentFrame}
+          totalFrames={totalFrames}
+          speed={animationSpeed}
+          onFrameChange={setCurrentFrame}
+        />
+        
+        {/* Stats */}
+        {showStats && <Stats />}
+      </Canvas>
 
       {/* Controls Overlay */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
@@ -301,9 +313,3 @@ const AnimationController: React.FC<{
 
   return null;
 };
-
-const LoadingSpinner: React.FC = () => (
-  <div className="absolute inset-0 flex items-center justify-center bg-secondary-900 z-10">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-  </div>
-);

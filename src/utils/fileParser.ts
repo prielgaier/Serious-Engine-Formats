@@ -175,17 +175,37 @@ async function parseFileDataBasic(buffer: ArrayBuffer, extension: string): Promi
           result.fileType = 'World';
           break;
           
+        case 'TVER':
+          result.fileType = 'SE2 Metadata (TVER format)';
+          if (buffer.byteLength >= 8) {
+            result.header.versionData = view.getUint32(4, true);
+          }
+          break;
+          
+        case 'CTSE':
+          result.fileType = 'SE2 Metadata (CTSE format)';
+          if (buffer.byteLength >= 8) {
+            const metaSuffix = new TextDecoder().decode(uint8Array.slice(4, 8));
+            result.header.metaSuffix = metaSuffix;
+          }
+          break;
+          
         default:
           // Check for other patterns
           const magic8 = new TextDecoder().decode(uint8Array.slice(0, 8));
           if (magic8 === 'CTSEMETA') {
-            result.fileType = 'SE2 Metadata';
+            result.fileType = 'SE2 Metadata (CTSEMETA format)';
             if (buffer.byteLength >= 16) {
               result.header.endianess = view.getUint32(8, true);
               result.header.metaVersion = view.getUint32(12, true);
             }
           } else {
             result.fileType = 'Unknown';
+            // Try to detect patterns in first 16 bytes
+            const first16 = Array.from(uint8Array.slice(0, 16))
+              .map(b => b.toString(16).padStart(2, '0'))
+              .join(' ');
+            result.header.hexPattern = first16;
           }
       }
     }
