@@ -21,9 +21,9 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({ modelData, animati
 
   return (
     <div className="w-full h-[600px] bg-secondary-900 rounded-xl overflow-hidden relative">
-      {/* 3D Canvas */}
-      <Canvas shadows>
-        <Suspense fallback={<LoadingSpinner />}>
+      {/* 3D Canvas wrapped with Suspense */}
+      <Suspense fallback={<LoadingSpinner />}>
+        <Canvas shadows>
           <PerspectiveCamera makeDefault position={[5, 5, 5]} />
           <OrbitControls enablePan enableZoom enableRotate />
           
@@ -62,8 +62,8 @@ export const ModelViewer3D: React.FC<ModelViewer3DProps> = ({ modelData, animati
           
           {/* Stats */}
           {showStats && <Stats />}
-        </Suspense>
-      </Canvas>
+        </Canvas>
+      </Suspense>
 
       {/* Controls Overlay */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
@@ -303,7 +303,7 @@ const AnimationController: React.FC<{
 };
 
 const LoadingSpinner: React.FC = () => (
-  <div className="flex items-center justify-center h-full">
+  <div className="absolute inset-0 flex items-center justify-center bg-secondary-900 z-10">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
   </div>
 );
